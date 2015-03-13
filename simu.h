@@ -8,7 +8,9 @@ typedef struct {
   // (sizeof(int) machine dependent 16 or 32 bits )
   // total of 10^16 (int) addresses memory
   int MEMORY[1<<16];
-  // registers 8
+  // registers 8 A,B,C,D,E,H,L,flag
+  // flag register in register[7]
+  
   int REGISTERS[8];
   int SP,PC,START_ADDRESS;
   int IOPORTS[1<<8];

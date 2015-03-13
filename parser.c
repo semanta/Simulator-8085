@@ -719,11 +719,6 @@ void parseFile(FileToLines * progFile,ByteList * byte_list, LabelList * labels, 
   char temp_error[255];
   for(i = 0; i<progFile->lineCount;i++)
     {
-      int j;
-      for(j = 0; j  < strlen(progFile->line[i]) ; ++j)
-	{
-	  progFile->line[i][j] = toupper(progFile->line[i][j]); 
-	}
       if(strlen(progFile->line[i]) == 0) continue;
       temp_error[0] = 0;
       parseCurrentLine(progFile->line[i],labels, i, byte_list, temp_error);

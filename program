@@ -1,6 +1,6 @@
 $sum of natural numbers
-MVI C, 14H
-LXI D, 0051H
+MVI C, aH
+LXI D, 0000H
 XRA A
 L1: MOV A, E
 ADD C

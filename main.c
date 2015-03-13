@@ -24,9 +24,17 @@ int main()
       int length = strlen(progFile.line[progFile.lineCount]);
       if(length)
 	{
+	  int j;
+	  for(j = 0; j  < length ; ++j)
+	    {
+	      progFile.line[progFile.lineCount][j] = toupper(progFile.line[progFile.lineCount][j]);
+
+	    }
+	  
 	  if(progFile.line[progFile.lineCount][length-1] == '\n')
 	    progFile.line[progFile.lineCount][length-1] == '\0';
 	}
+      
       progFile.lineCount++;
     }
 
