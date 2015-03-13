@@ -1,0 +1,13 @@
+$sum of natural numbers
+MVI C, 14H
+LXI D, 0051H
+XRA A
+L1: MOV A, E
+ADD C
+MOV E, A
+MOV A, D
+ACI 0H
+MOV D, A
+DCR C
+JNZ L1
+HLT
