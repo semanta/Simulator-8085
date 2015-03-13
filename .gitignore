@@ -1,0 +1,8 @@
+## Files to ignore
+*.c~
+*.h~
+*.c#
+*.h#
+*.o
+8085
+main
