@@ -1,7 +1,5 @@
 #include "simu.h"
 
-const char * reg_map = "ABCDEHL", * flags_map = "S Z * AC * P * CY";
-
 // get address value stored in HL register pair
 int GETHLADDRESS(Simu * sim)  {
   return GETADDRESS(sim->REGISTERS[GETREGCHAR('H')], sim->REGISTERS[GETREGCHAR('L')]);
@@ -739,14 +737,17 @@ void execute(Simu * simu)
 void loadprogram(Simu * simu, int start_addr, FileToLines * progFile)
 {
   int i;
+  // load the start address to the program counter
   simu->PC = simu->START_ADDRESS = start_addr;
   // stack pointer points at FFFF location
   simu->SP =  0XFFFF;
+  // initialize different values
   simu->progFile.lineCount = 0;
   simu->errorList.count = 0;
   simu->labelList.count = 0;
   simu->byteList.count = 0;
   // parse and store in memory
+  // bytelist is used for temporary storage
   parseFile(progFile, &simu->byteList, &simu->labelList, &simu->errorList,simu->START_ADDRESS);
   int ADDR = simu->PC;
   if(simu->errorList.count == 0)
@@ -756,11 +757,12 @@ void loadprogram(Simu * simu, int start_addr, FileToLines * progFile)
 	  simu->MEMORY[ADDR++] = simu->byteList.bytes[i][0];
 	}
     }
-
-
 }
 
+// to map 
+const char * reg_map = "ABCDEHL";
 
+// display the the various values in registers , pc , sp etc
 void stat(Simu * sim) {
   printf("PC: %d, SP: %d, HALT: %d\n", sim->PC, sim->SP, sim->HALT);
     int i;
@@ -768,5 +770,5 @@ void stat(Simu * sim) {
         printf("%c: %x ", reg_map[i], sim->REGISTERS[i] & 0xFF);
     }
     putchar('\n');
-    // printf("S: %d Z: %d AC: %d P: %d C: %d\n", getsign(sim), getzero(sim), getAF(sim), getparity(sim), getcarry(sim));
+    printf("S: %d Z: %d AC: %d P: %d C: %d\n", getsign(sim), getzero(sim), getAF(sim), getparity(sim), getcarry(sim));
 }

@@ -162,12 +162,14 @@ int isdelims(char ch)
 void gettoken(const char * s,  int * i, int * tok_s, int * tok_e) {
   *tok_s = *tok_e = 0;
   int n = strlen(s);
+  // if space then increase the marker
   while (*i<n && isspace(s[*i])) ++*i;
+  // if delimiters then return
   if (*i<n && isdelims(s[*i])) {
     *tok_s = *i;
     *tok_e = *i + 1;
     ++*i;
-    if (NSTRCMP("$", s + *tok_s, 1) == 0) *i = n; ///do not parse rest of comment line
+    if (NSTRCMP("$", s + *tok_s, 1) == 0) *i = n; //do not parse rest of comment line
     return ;
   }
   *tok_s = *tok_e = *i;
@@ -192,9 +194,11 @@ void resolve_line(const char * line, LabelList * labels, ErrorList * err_list, i
     int marker = 0;
     int tok_s, tok_e;
     gettoken(line, &marker, &tok_s, &tok_e);
+    // if line is comment line or empty return
     if (tok_s == tok_e || NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return;
+    // check to see if there is lebal in a line
     const char * ptr = findinstr(line + tok_s, ':', tok_e - tok_s);
-    if (ptr) { ///A LABEL
+    if (ptr) { 
         tok_e--;
         while (tok_e > tok_s && isspace(line[tok_e - 1])) --tok_e;
         if (tok_e == tok_s) {
@@ -202,6 +206,7 @@ void resolve_line(const char * line, LabelList * labels, ErrorList * err_list, i
             err_list->count++;
             return ;
         }
+	// if label is already in label list
         if (findInLabelList(labels, line + tok_s, tok_e - tok_s) != -1) {
             sprintf(err_list->err_list[err_list->count], "Multiple labels: ");
             strncat(err_list->err_list[err_list->count], line + tok_s, tok_e - tok_s);
@@ -210,62 +215,67 @@ void resolve_line(const char * line, LabelList * labels, ErrorList * err_list, i
         }
         addLabelToLabelList(labels, line + tok_s, tok_e - tok_s, *addr);
         gettoken(line, &marker, &tok_s, &tok_e);
-        if (tok_s == tok_e || NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return; ///only a label on a line
+	// if only a label in a line return
+	// a line may have a label + instruction
+        if (tok_s == tok_e || NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return;
     }
     if (IS_ONE_BYTE_INST(line + tok_s, tok_e - tok_s)) ++*addr;
     else if (IS_TWO_BYTE_INST(line + tok_s, tok_e - tok_s)) *addr += 2;
     else if (IS_THREE_BYTE_INST(line + tok_s, tok_e - tok_s)) {
-        if (IS_BRANCH_INST(line + tok_s, tok_e - tok_s)) {
-            gettoken(line, &marker, &tok_s, &tok_e);
-            if (tok_s == tok_e) {
-                sprintf(err_list->err_list[err_list->count], "Invalid operand: label missing");
-                err_list->count++;
-                return;
-            }
-            if (findInLabelList(labels, line + tok_s, tok_e - tok_s) == -1) {
-
-                to_resolve[*to_res_n][0] = 0;
-                strncat(to_resolve[*to_res_n], line + tok_s, tok_e - tok_s);
-                ++*to_res_n;
-            }
-        }
-        *addr += 3;
+      if (IS_BRANCH_INST(line + tok_s, tok_e - tok_s)) {
+	gettoken(line, &marker, &tok_s, &tok_e);
+	if (tok_s == tok_e) {
+	  sprintf(err_list->err_list[err_list->count], "Invalid operand: label missing");
+	  err_list->count++;
+	  return;
+	}
+	if (findInLabelList(labels, line + tok_s, tok_e - tok_s) == -1) {
+	  // there is no any matching label to branch
+	  to_resolve[*to_res_n][0] = 0;
+	  strncat(to_resolve[*to_res_n], line + tok_s, tok_e - tok_s);
+	  ++*to_res_n;
+	}
+      }
+      *addr += 3;
     } else {
         sprintf(err_list->err_list[err_list->count], "Undefined instruction: ");
         strncat(err_list->err_list[err_list->count], line + tok_s, tok_e - tok_s);
         err_list->count++;
     }
 }
-///identifies any undefined instructions
+
 void resolveLabels(FileToLines * progFile, LabelList * labels, ErrorList * err_list, int start_addr) {
-    char to_resolve[100][255]; //labels that need to be resolved at the next pass
-    int to_res_n = 0;
-    int addr = start_addr;
-    int i;
-    for (i = 0; i < progFile->lineCount; ++i) {
-        char lnmsg[255];
-        sprintf(lnmsg, " at line %d: ", i);
-        int pc = err_list->count;
-        resolve_line(progFile->line[i], labels, err_list, &addr, to_resolve, &to_res_n);
-	int j;
-        for ( j = pc; j < err_list->count; ++j) {
-            strcat(err_list->err_list[j], lnmsg);
-        }
+  //labels that need to be resolved at the next pass
+  char to_resolve[100][255];
+  // number of labels to be resolved
+  int to_res_n = 0;
+  int addr = start_addr;
+  int i;
+  for (i = 0; i < progFile->lineCount; ++i) {
+    char lnmsg[255];
+    sprintf(lnmsg, " at line %d: ", i);
+    int pc = err_list->count;
+    // 
+    resolve_line(progFile->line[i], labels, err_list, &addr, to_resolve, &to_res_n);
+    int j;
+    for ( j = pc; j < err_list->count; ++j) {
+      strcat(err_list->err_list[j], lnmsg);
     }
-    for ( i = 0; i < to_res_n; ++i) {
-        if (findInLabelList(labels, to_resolve[i], strlen(to_resolve[i])) == -1) {
-            sprintf(err_list->err_list[err_list->count], "Undefined label: %s", to_resolve[i]);
-            err_list->count++;
-        }
+  }
+  for ( i = 0; i < to_res_n; ++i) {
+    if (findInLabelList(labels, to_resolve[i], strlen(to_resolve[i])) == -1) {
+      sprintf(err_list->err_list[err_list->count], "Undefined label: %s", to_resolve[i]);
+      err_list->count++;
     }
+  }
 }
 void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteList * byte_list, char temp_error[])
 {
-  // int n = strlen(line) ;
+  
   int marker = 0, tok_s =0, tok_e = 0;
   gettoken(line, &marker, &tok_s, &tok_e);
-  if (NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return ; ///empty list
-  if (findinstr(line + tok_s, ':', tok_e - tok_s)) { ///A LABEL
+  if (NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return ; //empty line
+  if (findinstr(line + tok_s, ':', tok_e - tok_s)) { //A LABEL
     tok_e--;
     while (tok_e > tok_s && isspace(line[tok_e - 1])) --tok_e;
     if (tok_e == tok_s) {
@@ -273,11 +283,11 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
       return ;
     }
     gettoken(line, &marker, &tok_s, &tok_e);
+    // comment line
     if (tok_s == tok_e || NSTRCMP("$", line + tok_s, tok_e - tok_s) == 0) return ;
   }
   if(IS_ONE_BYTE_INST(line + tok_s, tok_e - tok_s))
     {
-
       if (NSTRCMP("ADC", line + tok_s, tok_e - tok_s) == 0) {
 	gettoken(line, &marker, &tok_s, &tok_e);
 	int r = get_id(line + tok_s, tok_e - tok_s);
@@ -286,6 +296,7 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
+	// 1000 1SSS
 	int opcode = (17 << 3) + r;
 	addToList(byte_list, opcode, line_no);
       }
@@ -297,6 +308,7 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
+	// 1000 0SSS
 	int opcode = (0x8 << 4) + r;
 	addToList(byte_list, opcode, line_no);
       } else if (NSTRCMP("ANA", line + tok_s, tok_e - tok_s) == 0) {
@@ -307,6 +319,7 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
+	// 1010 0SSS
 	int opcode = (0xA << 4) + r;
 	addToList(byte_list, opcode, line_no);
       } else if (NSTRCMP("CMA", line + tok_s, tok_e - tok_s) == 0) {
@@ -321,12 +334,14 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
+	// 1011 1SSS
 	int opcode = (23 << 3) + r;
 	addToList(byte_list, opcode, line_no);
       } else if (NSTRCMP("DAA", line + tok_s, tok_e - tok_s) == 0) {
 	addToList(byte_list, 0x27, line_no);
       } else if (NSTRCMP("DAD", line + tok_s, tok_e - tok_s) == 0) {
 	gettoken(line, &marker, &tok_s, &tok_e);
+	
 	int opcode;
 	if (NSTRCMP("B", line + tok_s, tok_e - tok_s) == 0) opcode = 0;
 	else if (NSTRCMP("D", line + tok_s, tok_e - tok_s) == 0) opcode = 1;
@@ -361,7 +376,8 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
-	opcode = (opcode << 4) + 0xB;
+	// 00Rp 1001
+	opcode = (opcode << 4) + 0x9;
 	addToList(byte_list, opcode, line_no);
       } else if (NSTRCMP("HLT", line + tok_s, tok_e - tok_s) == 0) {
 	addToList(byte_list, 0x76, line_no);
@@ -373,6 +389,7 @@ void parseCurrentLine(const char * line,LabelList * labels, int line_no, ByteLis
 	  strncat(temp_error, line + tok_s, tok_e - tok_s);
 	  return ;
 	}
+	// 00SS S100
 	int opcode = (r << 3) + 0x04;
 	addToList(byte_list, opcode, line_no);
       } else if (NSTRCMP("INX", line + tok_s, tok_e - tok_s) == 0) {

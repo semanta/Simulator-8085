@@ -1,16 +1,18 @@
+// main.c
 #include "headers.h"
 
+// main function
 int main()
 {
-  int i = 0;
+
   int ch;
   FILE *fp;
   // structure to hold lines
   FileToLines progFile;
   progFile.lineCount = 0;
-  // 8085 simulator
+  // a 8085 simulator
   Simu newSimulator;
-  
+  // open file in read mode and display error message on failure
   fp = fopen("program","r");
   if(fp == NULL)
     {
@@ -37,7 +39,7 @@ int main()
       
       progFile.lineCount++;
     }
-
+  // check if the program file is empty
   if(progFile.lineCount == 0)
     {
       printf("EMPTY PROGRAM!!!\n");
@@ -47,6 +49,8 @@ int main()
   // instruction codes are stored in int
   // arguments: reference of simulator, start address, reference of FileToLines structure
   loadprogram(&newSimulator, 5000, &progFile);
+  
+  // display the error messages for debugging
   if (newSimulator.errorList.count != 0) {
         printf("Error(s) in program:\n");
 	int i;
@@ -55,7 +59,10 @@ int main()
         }
         return 0;
     }
+  
+  // execute the program 
   execute(&newSimulator);
+  // show the statistics 
   stat(&newSimulator);
   return 0;
 }

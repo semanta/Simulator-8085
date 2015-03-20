@@ -1,5 +1,5 @@
 $sum of natural numbers
-MVI C, aH
+MVI C, 5H
 LXI D, 0000H
 XRA A
 L1: MOV A, E
